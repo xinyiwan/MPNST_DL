@@ -77,6 +77,8 @@ target/
 
 # Jupyter Notebook
 .ipynb_checkpoints
+.ipynb
+
 
 # IPython
 profile_default/
@@ -152,6 +154,12 @@ dmypy.json
 # Cython debug symbols
 cython_debug/
 
+# Monitor
+.neptune
+
+# Files
+input/
+output/
 # PyCharm
 #  JetBrains specific template is maintained in a separate JetBrains.gitignore that can
 #  be found at https://github.com/github/gitignore/blob/main/Global/JetBrains.gitignore
