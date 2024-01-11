@@ -15,10 +15,9 @@ from monai.transforms import (
 
 
 class MPNSTDataMoule(pl.LightningDataModule):
-    def __init__(self, batch_size, train_val_ratio, pixdim, spatial_size, fold, mri_type = 'T1'):
+    def __init__(self, batch_size, pixdim, spatial_size, fold, mri_type):
         super().__init__()
         self.batch_size = batch_size
-        self.train_val_ratio = train_val_ratio
         self.pixdim = pixdim
         self.spatial_size = spatial_size
         self.fold = fold
