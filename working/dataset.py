@@ -15,28 +15,33 @@ from monai.transforms import (
 
 
 class MPNSTDataMoule(pl.LightningDataModule):
-    def __init__(self, task, batch_size, train_val_ratio, pixdim, spatial_size, mri_type = 'T1'):
+    def __init__(self, batch_size, train_val_ratio, pixdim, spatial_size, fold, mri_type = 'T1'):
         super().__init__()
         self.batch_size = batch_size
         self.train_val_ratio = train_val_ratio
         self.pixdim = pixdim
         self.spatial_size = spatial_size
+        self.fold = fold
         self.mri_type = mri_type
         self.transform = None
-        self.data_dicts = None
-        self.preprocess = None
         self.train_set = None
         self.val_set = None
-        self.test_set = None
 
     def prepare_data(self):
         # Load labels
-        gt = pd.read_csv(f'/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/train_{self.mri_type}.csv')
-        train = pd.read_csv(f"input/{self.mri_type}/train_{self.mri_type}.csv")
+        data_csv = pd.read_csv(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/train_{self.mri_type}.csv")
 
-        image_paths = [f'/trinity/home/xwan/data/MPNST/{pid}/{self.mri_type}.nii.gz' for pid in train['Patient']]
-        labels = train['MPNST'].tolist()
-        self.data_dicts = [{"image": img, "label": label} for img, label in zip(image_paths, labels)]
+        train_df = data_csv[data_csv.fold != self.fold].reset_index(drop=False)
+        train_img_paths = [f'/trinity/home/xwan/data/MPNST/{pid}/{self.mri_type}.nii.gz' for pid in train_df['Patient']]
+        train_labels = train_df['MPNST'].tolist()
+
+        val_df = data_csv[data_csv.fold == self.fold].reset_index(drop=False)
+        val_img_paths = [f'/trinity/home/xwan/data/MPNST/{pid}/{self.mri_type}.nii.gz' for pid in val_df['Patient']]
+        val_labels = val_df['MPNST'].tolist()
+    
+        self.train_set = [{"image": img, "label": label} for img, label in zip(train_img_paths, train_labels)]
+        self.val_set = [{"image": img, "label": label} for img, label in zip(val_img_paths, val_labels)]
+        
 
     def build_transform(self, keys="image"):
             trans = Compose([
@@ -57,15 +62,10 @@ class MPNSTDataMoule(pl.LightningDataModule):
             return trans
     
     def setup(self, stage = None):
-        num_subjects = len(self.data_dicts)
-        num_train_subjects = int(round(num_subjects * self.train_val_ratio))
-        num_val_subjects = num_subjects - num_train_subjects
-        splits = num_train_subjects, num_val_subjects
-        train_subjects, val_subjects = random_split(self.data_dicts, splits)
 
         self.transform = self.build_transform()
-        self.train_set = monai.data.Dataset(data=train_subjects, transform=self.transform)
-        self.val_set = monai.data.Dataset(data=val_subjects, transform=self.transform)
+        self.train_set = monai.data.Dataset(data=train_set, transform=self.transform)
+        self.val_set = monai.data.Dataset(data=val_set, transform=self.transform)
     
     def train_dataloader(self):
          return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2)
