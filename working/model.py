@@ -7,7 +7,7 @@ from sklearn.metrics import roc_auc_score
 from torch.nn import Linear, CrossEntropyLoss, functional as F
 
 
-class Model(pl.LightningModule):
+class MyModel(pl.LightningModule):
     def __init__(self, net, learning_rate, decay_factor):
         super().__init__()
         self.training_step_outputs = []
