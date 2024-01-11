@@ -9,7 +9,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 import config
-import utils
+import utils_o
 
 
 class MPNSTDataset(Dataset):
@@ -60,7 +60,7 @@ class MPNSTDataset(Dataset):
                         int(x) if x.isdigit() else x for x in re.findall(r"[^0-9]|[0-9]+", var)
                     ],
                 )
-                resolutions = [utils.extract_cropped_image_size(f) for f in files]
+                resolutions = [utils_o.extract_cropped_image_size(f) for f in files]
                 middle = np.array(resolutions).argmax()
                 big_image_indexes[case_id] = middle
 
@@ -91,7 +91,7 @@ class MPNSTDataset(Dataset):
         num_imgs2 = num_imgs // 2
         p1 = max(0, middle - num_imgs2)
         p2 = min(len(files), middle + num_imgs2)
-        image_stack = [utils.load_dicom_image(f, rotate=rotate, voi_lut=True) for f in files[p1:p2]]
+        image_stack = [utils_o.load_dicom_image(f, rotate=rotate, voi_lut=True) for f in files[p1:p2]]
         
         img3d = np.stack(image_stack).T
         if img3d.shape[-1] < num_imgs:

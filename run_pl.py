@@ -40,7 +40,6 @@ from lightning.pytorch.loggers import NeptuneLogger
 from torchmetrics.classification import BinaryAccuracy
 from sklearn.metrics import accuracy_score
 from sklearn.metrics import roc_auc_score
-# from scikitplot.metrics import plot_confusion_matrix
 
 
 # Set up root 
@@ -282,6 +281,7 @@ def main():
         train_val_ratio = cfg['dataset']['train_val_ratio'],
         pixdim = tuple(cfg['transform']['pixdim']),
         spatial_size = tuple(cfg['transform']['spatial_size']),
+        mri_type =  cfg['dataset']['task_name'],
     )
     data.prepare_data()
     data.setup()
