@@ -6,6 +6,7 @@ import torch
 import argparse
 from dataset import MPNSTDataMoule
 from model import MyModel
+from net import init_net
 from utils import log_confusion_matrix
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -89,19 +90,7 @@ def main():
     print("Training:  ", len(data.train_set))
     print("Validation: ", len(data.val_set))
     
-    if cfg['model']['net'] == 'resnet':
-        net = monai.networks.nets.resnet.resnet18(
-                                            spatial_dims = 3, 
-                                            n_input_channels = cfg['model']['resnet']['in_channels'] 
-                                            )
-    else:
-        net = monai.networks.nets.DenseNet(spatial_dims = 3, in_channels = cfg['model']['densenet']['in_channels'], 
-                                             out_channels = cfg['model']['densenet']['num_classes'],
-                                             init_features = cfg['model']['densenet']['init_features'],
-                                             growth_rate = cfg['model']['densenet']['growth_rate'],
-                                             block_config = tuple(cfg['model']['densenet']['block_config']),
-                                             dropout_prob = cfg['model']['densenet']['dropout_prob'])
-
+    
     # Initialize a trainer
     trainer = pl.Trainer(
         logger = neptune_logger,
@@ -113,20 +102,19 @@ def main():
     )
 
     # Initialize model
+    net = init_net(cfg)
     model = MyModel(
         net = net,
         learning_rate = parameters["learning_rate"],
         decay_factor = parameters["decay_factor"]
     ).to(device)
 
-    # (neptune) log model summary
+    # (neptune) log model summary and hyper-parameters
     neptune_logger.log_model_summary(model=model, max_depth=-1)
-
-    # (neptune) log hyper-parameters
     neptune_logger.log_hyperparams(params=parameters)
 
     trainer.fit(model=model, datamodule=data)
-    
+
     # (neptune) log confusion matrix
     log_confusion_matrix(model, data, neptune_logger, cp_dir)
 

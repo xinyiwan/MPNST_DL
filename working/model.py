@@ -17,7 +17,6 @@ class MyModel(pl.LightningModule):
         # optimizer paramters
         self.lr = learning_rate
         self.decay_factor = decay_factor
-
         self.net = net
 
     def forward(self, x):
