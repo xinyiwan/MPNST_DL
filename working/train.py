@@ -5,7 +5,7 @@ import tempfile
 import torch
 import argparse
 from dataset import MPNSTDataMoule
-from model import Model
+from model import MyModel
 from utils import log_confusion_matrix
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -69,8 +69,10 @@ def main():
     # (neptune) create NeptuneLogger
     neptune_logger = NeptuneLogger(
     project="xinyiwan/MPNST",
+    name = "{}_{}_cfg-{}_fold{}".format(parameters["cfg"], time_label, cfg['config']['file_idx'], cfg['dataset']['fold']),
     api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI0YjhhZDFkNi1lMWNhLTQ1MzktYjcxYS05MDNlMjkyYTEyNDEifQ==",
     log_model_checkpoints=False,
+    tags = ['training', cfg['model']['net']]
 )
 
 
@@ -111,7 +113,7 @@ def main():
     )
 
     # Initialize model
-    model = Model(
+    model = MyModel(
         net = net,
         learning_rate = parameters["learning_rate"],
         decay_factor = parameters["decay_factor"]
