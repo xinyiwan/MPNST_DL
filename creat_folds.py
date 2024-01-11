@@ -19,14 +19,14 @@ pids = [i.split('MPNST/')[1].split('/')[0] for i in images]
 # Generate new pinfo for expriment
 train_orig = pd.read_csv("/trinity/home/xwan/data/MPNST/pinfo_MPNST.csv")
 train = train_orig[train_orig['Patient'].isin(pids)]
-train.to_csv(f"input/{exp}/train_{exp}.csv", index=False)
+train.to_csv(f"/trinity/home/xwan/MPNST_DL/input/{exp}/train_{exp}.csv", index=False)
 
 
 
 
 skf = StratifiedKFold(n_splits=args.n_folds, shuffle=True, random_state=518)
 target = "MPNST"
-train = pd.read_csv(f"input/train_{exp}.csv")
+train = pd.read_csv(f"/trinity/home/xwan/MPNST_DL/input/{exp}/train_{exp}.csv")
 
 for fold, (trn_idx, val_idx) in enumerate(
     skf.split(train, train[target])
@@ -34,4 +34,4 @@ for fold, (trn_idx, val_idx) in enumerate(
     train.loc[val_idx, "fold"] = int(fold)
 
 
-train.to_csv(f"input/train_{exp}.csv", index=False)
+train.to_csv(f"/trinity/home/xwan/MPNST_DL/input/{exp}/train_{exp}.csv", index=False)
