@@ -15,3 +15,9 @@ source "/tmp/${SLURM_JOB_USER}.${SLURM_JOB_ID}/prolog.env"
 source venv/bin/activate  # commented out by conda initialize
 module load Python/3.9.5-GCCcore-10.3.0
 
+python3 working/creat_folds.py --n_folds 5 --mri_type T1
+python3 working/train.py input/configs/config004.yaml --fold 0
+python3 working/train.py input/configs/config004.yaml --fold 1
+python3 working/train.py input/configs/config004.yaml --fold 2
+python3 working/train.py input/configs/config004.yaml --fold 3
+python3 working/train.py input/configs/config004.yaml --fold 4
