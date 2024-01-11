@@ -19,5 +19,5 @@ def log_confusion_matrix(lit_model, data_module, neptune_logger, cp_dir):
     fig, ax = plt.subplots(figsize=(16, 12))
     cm = confusion_matrix(y_true, y_pred)
     fig = ConfusionMatrixDisplay(confusion_matrix=cm)
-    fig.figure_.savefig(os.path.join(cp_dir,'confusion_matrix.png'))
-    neptune_logger.experiment["confusion_matrix"].upload(File.as_image(fig.figure_))
+    fig.plot().figure_.savefig(os.path.join(cp_dir,'confusion_matrix.png'))
+    neptune_logger.experiment["confusion_matrix"].upload(File.as_image(fig.plot().figure_))
