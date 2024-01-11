@@ -64,8 +64,8 @@ class MPNSTDataMoule(pl.LightningDataModule):
     def setup(self, stage = None):
 
         self.transform = self.build_transform()
-        self.train_set = monai.data.Dataset(data=train_set, transform=self.transform)
-        self.val_set = monai.data.Dataset(data=val_set, transform=self.transform)
+        self.train_set = monai.data.Dataset(data=self.train_set, transform=self.transform)
+        self.val_set = monai.data.Dataset(data=self.val_set, transform=self.transform)
     
     def train_dataloader(self):
          return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2)
