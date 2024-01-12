@@ -7,6 +7,7 @@ import argparse
 from dataset import MPNSTDataMoule
 from model import MyModel
 from net import init_net
+from get_cfg import get_parameters
 from utils import log_confusion_matrix
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
@@ -31,28 +32,18 @@ def main():
         cfg = yaml.load(f, Loader=yaml.FullLoader)
     if args.fold:
         cfg['dataset']['fold'] = int(args.fold)
-
-    # Define hyper-parameters
-    parameters = {
-        "dense_init_features": cfg['model']['densenet']['init_features'],
-        "dense_growth_rate": cfg['model']['densenet']['growth_rate'],
-        "dropout": cfg['model']['densenet']['dropout_prob'],
-        "learning_rate": cfg['optimizer']['learning_rate'],
-        "decay_factor":cfg['optimizer']['decay_factor'],
-        "batch_size": cfg['dataset']['batch_size'],
-        "n_epochs": cfg['train']['epochs'],
-        "cfg": cfg['dataset']['task_name']
-        } 
+    
+    parameters = get_parameters(cfg)
 
     # create learning rate logger
     lr_logger = LearningRateMonitor(logging_interval="epoch")
 
     # Init checkpoints save direction
     time_label = datetime.now().strftime("%m%d")
-    exp_dir = "/trinity/home/xwan/MPNST_DL/output/checkpoints/{}_{}_config-{}".format(parameters["cfg"],time_label, cfg['config']['file_idx'])
+    exp_dir = "/trinity/home/xwan/MPNST_DL/output/checkpoints/{}_{}_config-{}".format(parameters["task"],time_label, cfg['config']['file_idx'])
     if not os.path.exists(exp_dir):
         os.mkdir(exp_dir)
-    cp_dir = os.path.join(exp_dir, f"fold_{cfg['dataset']['fold']}")
+    cp_dir = os.path.join(exp_dir, f"fold_{parameters['fold']}")
     if not os.path.exists(cp_dir):
         os.mkdir(cp_dir)
 
@@ -70,11 +61,11 @@ def main():
     # (neptune) create NeptuneLogger
     neptune_logger = NeptuneLogger(
     project="xinyiwan/MPNST",
-    name = "{}_{}_cfg-{}_fold{}".format(parameters["cfg"], time_label, cfg['config']['file_idx'], cfg['dataset']['fold']),
+    name = "{}_{}_cfg-{}_fold{}".format(parameters["task"], time_label, cfg['config']['file_idx'], parameters['fold']),
     api_key="eyJhcGlfYWRkcmVzcyI6Imh0dHBzOi8vYXBwLm5lcHR1bmUuYWkiLCJhcGlfdXJsIjoiaHR0cHM6Ly9hcHAubmVwdHVuZS5haSIsImFwaV9rZXkiOiI0YjhhZDFkNi1lMWNhLTQ1MzktYjcxYS05MDNlMjkyYTEyNDEifQ==",
     log_model_checkpoints=False,
-    tags = ['training', cfg['model']['net']]
-)
+    tags = ['training', parameters['net']]
+    )
 
 
     # Initialize a datamodule
