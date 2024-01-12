@@ -2,6 +2,7 @@ import os, glob
 import pandas as pd
 import monai
 import pytorch_lightning as pl
+from monai.data import Dataset
 from torch.utils.data import random_split, DataLoader
 from monai.transforms import (
     Compose,
@@ -67,7 +68,18 @@ class MPNSTDataMoule(pl.LightningDataModule):
         self.val_set = monai.data.Dataset(data=self.val_set, transform=self.transform)
     
     def train_dataloader(self):
-         return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2)
+         return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2, shuffle=True)
         
     def val_dataloader(self):
-        return DataLoader(self.val_set, batch_size=self.batch_size, num_workers=2)        
+        return DataLoader(self.val_set, batch_size=self.batch_size, num_workers=2, shuffle=False)        
+
+
+# class MPNSTDataset(Dataset):
+#     def __init__(self, data, transform):
+#         super().__init__()
+#         self.data = data
+#         self.transform = transform
+    
+#     def __getitem__(self, index):
+        
+     
