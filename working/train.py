@@ -8,7 +8,7 @@ from dataset import MPNSTDataMoule
 from model import MyModel
 from net import init_net
 from get_cfg import get_parameters
-from utils import log_confusion_matrix
+from utilities import log_confusion_matrix
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
 from lightning.pytorch.loggers import NeptuneLogger
