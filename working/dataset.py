@@ -6,16 +6,22 @@ import torch
 import joblib
 from tqdm import tqdm
 from monai.data import Dataset
-from working.utilities import extract_3d_bbx
+# from torch.utils.data import Dataset
+import collections
+from collections.abc import Callable, Sequence
+from utilities import extract_3d_bbx
 from torch.utils.data import random_split, DataLoader
 from monai.transforms import (
     Compose,
+    Resize,
     EnsureChannelFirstd,
     LoadImaged,
     Orientationd,
     ScaleIntensityd,
     Spacingd,
     ResizeWithPadOrCropd,
+    apply_transform,
+    MapTransform,
 )
 import nibabel as nib
 
@@ -76,11 +82,15 @@ class MPNSTDataMoule(pl.LightningDataModule):
         self.transform = self.build_transform()
         # self.train_set = monai.data.Dataset(data=self.train_set, transform=self.transform)
         # self.val_set = monai.data.Dataset(data=self.val_set, transform=self.transform)
-        self.train_set = MPNSTDataset(self.train_set, mri_type=self.mri_type, transform=self.transform)
-        self.val_set = MPNSTDataset(self.val_set, mri_type=self.mri_type, transform=self.transform)        
+        train_df = self.train_set
+        val_df = self.val_set
+        mri_type = self.mri_type
+        tf = self.transform 
+        self.train_set = MPNSTDataset(data=train_df, mri_type=mri_type, transform=tf)
+        self.val_set = MPNSTDataset(data=val_df, mri_type=mri_type, transform=tf)        
 
     def train_dataloader(self):
-         return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2, shuffle=True)
+        return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2, shuffle=True)
         
     def val_dataloader(self):
         return DataLoader(self.val_set, batch_size=self.batch_size, num_workers=2, shuffle=False)        
@@ -88,10 +98,11 @@ class MPNSTDataMoule(pl.LightningDataModule):
 
 class MPNSTDataset(Dataset):
     def __init__(self, data, mri_type, transform=None, is_train=True, use_roi=True):
-        super().__init__()
         self.data = data
         self.mri_type = mri_type
         self.transform = transform
+        self.use_roi = use_roi
+        self.is_train = is_train
         self.use_roi = use_roi
         self.img_roi = self.__prepare_roi()
     
@@ -99,16 +110,24 @@ class MPNSTDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, index):
-        row = self.data.loc[index]
-        case_id = int(row.Patient)
-        label = int(row[self.MPNST])
+        # if isinstance(index, slice):
+        #     # dataset[:42]
+        #     start, stop, step = index.indices(len(self))
+        #     indices = range(start, stop, step)
+        #     return Subset(dataset=self, indices=indices)
+        # if isinstance(index, collections.abc.Sequence):
+        #     # dataset[[1, 3, 4]]
+        #     return Subset(dataset=self, indices=index)
+        # return self._transform(index)
+    
+        row = self.data[index]
+        case_id = row['case_id']
+        label = int(row['label'])
         _3d_images = self.load_roi_images_3d(case_id)
         _3d_images = torch.tensor(_3d_images).float()
-
-        if self.is_train:
-            return {"image": _3d_images, "label": label, "case_id": case_id}
-        else:
-            return {"image": _3d_images, "case_id": case_id}
+        
+        sample = {"image": _3d_images, "label": label, "case_id": case_id}
+        return self.transform(sample)            
 
     def __prepare_roi(self):
         roi_coodinates = {}
@@ -119,10 +138,10 @@ class MPNSTDataset(Dataset):
             return roi_coodinates
         else:
             print("Caulculating the ROI from segmentation for every images...")
-            for row in tqdm(self.data.iterrows(), total=len(self.data)):
-                case_id = row[1].Patient
+            for row in tqdm(self.data, total=len(self.data)):
+                case_id = row['case_id']
                 seg = f"/trinity/home/xwan/data/MPNST/{case_id}/segmentations.nii.gz"
-                coodinates = utils.extract_3d_bbx(seg)
+                coodinates = extract_3d_bbx(seg)
                 roi_coodinates[case_id] = coodinates
 
             joblib.dump(roi_coodinates, f"/trinity/home/xwan/MPNST_DL/input/3d_roi_{self.mri_type}.pkl")
@@ -130,7 +149,7 @@ class MPNSTDataset(Dataset):
 
     def load_roi_images_3d(self, case_id):
 
-        f_img = f"/trinity/home/xwan/data/MPNST/{case_id}/{self.type}.nii.gz"
+        f_img = f"/trinity/home/xwan/data/MPNST/{case_id}/{self.mri_type}.nii.gz"
         img = nib.load(f_img).get_fdata()
         x1, x2, y1, y2, z1, z2 = self.img_roi[case_id]
         return img[x1:x2, y1:y2:, z1:z2]
