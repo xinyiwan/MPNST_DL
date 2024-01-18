@@ -13,14 +13,12 @@ from utilities import extract_3d_bbx
 from torch.utils.data import random_split, DataLoader
 from monai.transforms import (
     Compose,
-    Resize,
-    EnsureChannelFirstd,
+    Resized,
     LoadImaged,
     Orientationd,
     ScaleIntensityd,
     Spacingd,
     ResizeWithPadOrCropd,
-    apply_transform,
     MapTransform,
 )
 import nibabel as nib
@@ -61,15 +59,12 @@ class MPNSTDataMoule(pl.LightningDataModule):
 
     def build_transform(self, keys="image"):
             trans = Compose([
-                LoadImaged(keys = keys),
-                EnsureChannelFirstd(keys = keys),
-                Orientationd(keys = keys, axcodes="PLI"),
                 Spacingd(
                     keys = keys,
                     pixdim = self.pixdim,
                     mode = ("bilinear")
                     ),
-                ResizeWithPadOrCropd(
+                Resized(
                     keys = keys,
                     spatial_size=self.spatial_size
                 ),
@@ -90,10 +85,10 @@ class MPNSTDataMoule(pl.LightningDataModule):
         self.val_set = MPNSTDataset(data=val_df, mri_type=mri_type, transform=tf)        
 
     def train_dataloader(self):
-        return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=2, shuffle=True)
+        return DataLoader(self.train_set, batch_size=self.batch_size, num_workers=0, shuffle=True)
         
     def val_dataloader(self):
-        return DataLoader(self.val_set, batch_size=self.batch_size, num_workers=2, shuffle=False)        
+        return DataLoader(self.val_set, batch_size=self.batch_size, num_workers=0, shuffle=False)        
 
 
 class MPNSTDataset(Dataset):
@@ -110,24 +105,16 @@ class MPNSTDataset(Dataset):
         return len(self.data)
     
     def __getitem__(self, index):
-        # if isinstance(index, slice):
-        #     # dataset[:42]
-        #     start, stop, step = index.indices(len(self))
-        #     indices = range(start, stop, step)
-        #     return Subset(dataset=self, indices=indices)
-        # if isinstance(index, collections.abc.Sequence):
-        #     # dataset[[1, 3, 4]]
-        #     return Subset(dataset=self, indices=index)
-        # return self._transform(index)
     
         row = self.data[index]
         case_id = row['case_id']
         label = int(row['label'])
         _3d_images = self.load_roi_images_3d(case_id)
         _3d_images = torch.tensor(_3d_images).float()
+        sample = {"image": _3d_images.unsqueeze(0), "label": label, "case_id": case_id}
+        sample = self.transform(sample) 
         
-        sample = {"image": _3d_images, "label": label, "case_id": case_id}
-        return self.transform(sample)            
+        return sample    
 
     def __prepare_roi(self):
         roi_coodinates = {}
@@ -154,4 +141,3 @@ class MPNSTDataset(Dataset):
         x1, x2, y1, y2, z1, z2 = self.img_roi[case_id]
         return img[x1:x2, y1:y2:, z1:z2]
         
-     
