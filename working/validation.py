@@ -49,7 +49,10 @@ def main():
         )
         data.prepare_data()
         data.setup()
-        checkpoint = torch.load('/trinity/home/xwan/MPNST_DL/output/checkpoints/{}_{}_config-{}/fold_{}/last.ckpt'.format(parameters['task'], args.date, int(parameters['idx']), i))
+        cp_path = '/trinity/home/xwan/MPNST_DL/output/checkpoints/{}_{}_config-{}/fold_{}'.format(parameters['task'], args.date, int(parameters['idx']), i)
+        # cp = os.path.join(cp_path, os.listdir(cp_path)[0])
+        cp = os.path.join(cp_path, 'last.ckpt')
+        checkpoint = torch.load(cp)
         model.load_state_dict(checkpoint['state_dict'], strict=False)
 
         val_loader = data.val_dataloader()
