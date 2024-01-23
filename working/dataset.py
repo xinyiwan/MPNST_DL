@@ -6,11 +6,8 @@ import torch
 import joblib
 from tqdm import tqdm
 from monai.data import Dataset
-# from torch.utils.data import Dataset
-import collections
-from collections.abc import Callable, Sequence
 from utilities import extract_3d_bbx
-from torch.utils.data import random_split, DataLoader
+from torch.utils.data import DataLoader
 from monai.transforms import (
     Compose,
     Resized,
@@ -75,8 +72,6 @@ class MPNSTDataMoule(pl.LightningDataModule):
     def setup(self, stage = None):
 
         self.transform = self.build_transform()
-        # self.train_set = monai.data.Dataset(data=self.train_set, transform=self.transform)
-        # self.val_set = monai.data.Dataset(data=self.val_set, transform=self.transform)
         train_df = self.train_set
         val_df = self.val_set
         mri_type = self.mri_type
@@ -99,7 +94,7 @@ class MPNSTDataset(Dataset):
         self.use_roi = use_roi
         self.is_train = is_train
         self.use_roi = use_roi
-        self.img_roi = self.__prepare_roi()
+        self.img_roi = self.__get_roi()
     
     def __len__(self):
         return len(self.data)
@@ -116,22 +111,24 @@ class MPNSTDataset(Dataset):
         
         return sample    
 
-    def __prepare_roi(self):
+    def prepare_roi(self):
+        # use for the first time
         roi_coodinates = {}
-        if (f"3d_roi_{self.mri_type}.pkl" in os.listdir("/trinity/home/xwan/MPNST_DL/input/"))\
+        print("Caulculating the ROI from segmentation for every images...")
+        for row in tqdm(self.data, total=len(self.data)):
+            case_id = row['case_id']
+            seg = f"/trinity/home/xwan/data/MPNST/{case_id}/segmentations.nii.gz"
+            coodinates = extract_3d_bbx(seg)
+            roi_coodinates[case_id] = coodinates
+                            
+        joblib.dump(roi_coodinates, f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/3d_roi_{self.mri_type}.pkl")
+        return roi_coodinates
+    
+    def __get_roi(self):
+        if (f"3d_roi_{self.mri_type}.pkl" in os.listdir(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/"))\
             and (self.use_roi) :
             print("Loading the ROI from segmentations for all the images...")
-            roi_coodinates = joblib.load(f"/trinity/home/xwan/MPNST_DL/input/3d_roi_{self.mri_type}.pkl")
-            return roi_coodinates
-        else:
-            print("Caulculating the ROI from segmentation for every images...")
-            for row in tqdm(self.data, total=len(self.data)):
-                case_id = row['case_id']
-                seg = f"/trinity/home/xwan/data/MPNST/{case_id}/segmentations.nii.gz"
-                coodinates = extract_3d_bbx(seg)
-                roi_coodinates[case_id] = coodinates
-
-            joblib.dump(roi_coodinates, f"/trinity/home/xwan/MPNST_DL/input/3d_roi_{self.mri_type}.pkl")
+            roi_coodinates = joblib.load(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/3d_roi_{self.mri_type}.pkl")
             return roi_coodinates
 
     def load_roi_images_3d(self, case_id):
