@@ -19,6 +19,6 @@ def get_parameters(cfg):
         parameters['dropout'] = cfg['model']['densenet']['dropout_prob']
 
     if cfg['model']['net'] == 'resnet':
-        parameters['layers'] = cfg['model']['resenet']['layers']
+        parameters['layers'] = cfg['model']['resnet']['layers']
 
     return parameters
