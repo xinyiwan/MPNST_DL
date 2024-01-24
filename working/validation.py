@@ -46,6 +46,7 @@ def main():
             spatial_size = tuple(cfg['transform']['spatial_size']),
             fold = i,
             mri_type =  cfg['dataset']['task_name'],
+            if_use_roi = cfg['transform']['if_use_roi'],
         )
         data.prepare_data()
         data.setup()

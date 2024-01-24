@@ -1,18 +1,17 @@
 import os
 from datetime import datetime
 import yaml
-import tempfile
 import torch
 import argparse
 from dataset import MPNSTDataMoule
 from model import MyModel
 from net import init_net
 from get_cfg import get_parameters
-from utilities import log_confusion_matrix
+from utilities import log_confusion_matrix, plot_batch
 import pytorch_lightning as pl
-from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint
+from pytorch_lightning.callbacks import LearningRateMonitor, ModelCheckpoint, EarlyStopping
 from lightning.pytorch.loggers import NeptuneLogger
-import monai
+import matplotlib.pyplot as plt
 
 
 # Set up device 
@@ -47,16 +46,17 @@ def main():
     if not os.path.exists(cp_dir):
         os.mkdir(cp_dir)
 
-    # create model checkpointing object
+    # create model checkpointing object, early stop
     model_checkpoint = ModelCheckpoint(
         dirpath=cp_dir,
         filename="{epoch:02d}",
         save_weights_only=True,
-        save_top_k=3,
+        save_top_k=1,
         save_last=True,
         monitor="val/loss",
         every_n_epochs=1,
     )
+    # early_stop_callback = EarlyStopping(monitor="val/loss", min_delta=0.00, patience=2, verbose=False, mode="min")
 
     # (neptune) create NeptuneLogger
     neptune_logger = NeptuneLogger(
@@ -75,14 +75,19 @@ def main():
         spatial_size = tuple(cfg['transform']['spatial_size']),
         fold = args.fold,
         mri_type =  cfg['dataset']['task_name'],
+        if_use_roi = cfg['transform']['if_use_roi'],
     )
     data.prepare_data()
     data.setup()
     print("Training:  ", len(data.train_set))
     print("Validation: ", len(data.val_set))
-    
+
+    # Plots batches of train and validation sets
+    # plot_batch(data.train_dataloader(), cp_dir=cp_dir, mode='train', neptune_logger=neptune_logger, num=5)
+    # plot_batch(data.val_dataloader(), cp_dir=cp_dir, mode='val',neptune_logger=neptune_logger, num=1)        
     
     # Initialize a trainer
+
     trainer = pl.Trainer(
         logger = neptune_logger,
         devices = [0],
