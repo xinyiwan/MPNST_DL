@@ -16,11 +16,11 @@ source venv/bin/activate  # commented out by conda initialize
 module load Python/3.9.5-GCCcore-10.3.0
 
 python3 working/creat_folds.py --n_folds 5 --mri_type T1
-python3 working/train.py input/configs/config009.yaml --fold 0
-python3 working/train.py input/configs/config009.yaml --fold 1
-python3 working/train.py input/configs/config009.yaml --fold 2
-python3 working/train.py input/configs/config009.yaml --fold 3
-python3 working/train.py input/configs/config009.yaml --fold 4
+python3 working/train.py input/configs/config014.yaml --fold 0
+# python3 working/train.py input/configs/config012.yaml --fold 1
+# python3 working/train.py input/configs/config012.yaml --fold 2
+# python3 working/train.py input/configs/config012.yaml --fold 3
+# python3 working/train.py input/configs/config012.yaml --fold 4
 
-
-
+# python3 working/validation.py input/configs/config012.yaml 0124
+# python3 working/validation.py input/configs/config005.yaml 0111
