@@ -59,10 +59,13 @@ class MyModel(pl.LightningModule):
         x, y = batch['image'], batch['label']
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
-
+        print(y_hat)
         y_true = y.cpu().detach().numpy()
         y_pred = y_hat.argmax(axis=1).cpu().detach().numpy()
-
+        print("======  prediction =====")
+        print(y_pred)
+        print("===== GT =====")
+        print(y_true)
         self.validation_step_outputs.append({"loss": loss, "y_true": y_true, "y_pred": y_pred})
 
         return {"loss": loss, "y_true": y_true, "y_pred": y_pred}
