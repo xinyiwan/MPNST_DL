@@ -5,7 +5,6 @@ import torch
 import joblib
 from tqdm import tqdm
 from monai.data import Dataset
-from utilities import extract_3d_bbx
 from torch.utils.data import DataLoader
 from torch.utils.data import WeightedRandomSampler
 from monai.transforms import (
@@ -16,15 +15,14 @@ from monai.transforms import (
     RandGaussianNoised,
     ScaleIntensityd,
     Spacingd,
+    SpatialCropd,
+    SpatialPadd,
+    EnsureChannelFirstd,
     ResizeWithPadOrCropd,
-    RandSpatialCropSamplesd,
-    RandAdjustContrastd,
+    NormalizeIntensityd,
     RandRotated,
     RandFlipd,
     RandZoomd,
-    MapTransform,
-    RandHistogramShiftd,
-    RandRotate90d,
 )
 import nibabel as nib
 import numpy as np
@@ -66,57 +64,37 @@ class MPNSTDataMoule(pl.LightningDataModule):
         self.val_set = [{"image": img, "seg": seg, "label": label, "case_id": pid} for img, seg, label, pid in zip(val_img_paths, val_seg_paths, val_labels, val_ids)]
         
 
-    def build_transform(self, keys="image"):
-            train_trans = Compose([
-                Spacingd(
-                    keys = keys,
-                    pixdim = self.pixdim,
-                    mode = ("bilinear")
-                    ),
-                Resized(
-                    keys = keys,
-                    spatial_size=self.spatial_size
-                ),
-                RandGaussianNoised(keys = keys,
-                                   prob=0.3, 
-                                   mean=0.0, 
-                                   std=0.1),
-                RandAdjustContrastd(keys = keys,
-                                    prob=0.5),
-                RandHistogramShiftd(keys = keys,
-                                    prob=0.5),
-                ScaleIntensityd(keys = keys),
-                RandZoomd(keys = keys,
-                          prob=0.3,
-                          min_zoom=0.9, 
-                          max_zoom=1.1),
-                RandRotated(prob=0.5,
-                            range_x = 0.4,
-                            range_y = 0.4,
-                            range_z = 0.4,
-                            keys = keys),
-                RandFlipd(keys = keys,
-                          prob=0.1, spatial_axis=1),
-            ])  
-            val_trans = Compose([
-                Spacingd(
-                    keys = keys,
-                    pixdim = self.pixdim,
-                    mode = ("bilinear")
-                    ),
-                Resized(
-                    keys = keys,
-                    spatial_size=self.spatial_size
-                ),
-                ScaleIntensityd(keys = keys),
-            ]) 
+    def augmentation_transform(self, keys=['image','seg']):
+            # train_trans = Compose([
+            #     RandGaussianNoised(keys = ['image'],
+            #                        prob=0.5, 
+            #                        mean=0.0, 
+            #                        std=0.05),
+            #     RandZoomd(keys = ['image'],
+            #               prob=0.3,
+            #               min_zoom=0.9, 
+            #               max_zoom=1.1),
+            #     RandRotated(prob=0.3,
+            #                 range_x = 0.4,
+            #                 range_y = 0.4,
+            #                 range_z = 0.4,
+            #                 keys = ['image']),
+            #     RandFlipd(keys = ['image'],
+            #               prob=0.5, spatial_axis=1),
+            # ]) 
+            train_trans = None 
+            val_trans = None
             return train_trans, val_trans
     
     def setup(self, stage = None):
 
-        self.train_trans, self.val_trans = self.build_transform()
-        self.train_set = MPNSTDataset(data=self.train_set, mri_type=self.mri_type, transform=self.train_trans, use_roi=self.if_use_roi)
-        self.val_set = MPNSTDataset(data=self.val_set, mri_type=self.mri_type, transform=self.val_trans, use_roi=self.if_use_roi)
+        self.train_trans, self.val_trans = self.augmentation_transform()
+        self.train_set = MPNSTDataset(data=self.train_set, mri_type=self.mri_type, 
+                                      pixdim=self.pixdim, spatial_size=self.spatial_size, 
+                                      transform=self.train_trans, use_roi=self.if_use_roi)
+        self.val_set = MPNSTDataset(data=self.val_set, mri_type=self.mri_type, 
+                                    pixdim=self.pixdim, spatial_size=self.spatial_size, 
+                                    transform=self.val_trans, use_roi=self.if_use_roi)
 
     def train_dataloader(self):
         if self.if_sampler == True:
@@ -136,12 +114,15 @@ class MPNSTDataMoule(pl.LightningDataModule):
 
 
 class MPNSTDataset(Dataset):
-    def __init__(self, data, mri_type, transform=None, use_roi=True):
+    def __init__(self, data, mri_type, pixdim, spatial_size, transform=None, use_roi=False):
         self.data = data
         self.mri_type = mri_type
+        self.pixdim = pixdim
+        self.spatial_size = spatial_size
         self.transform = transform
         self.use_roi = use_roi
-    
+        self.pre_transforam = None 
+
     def __len__(self):
         return len(self.data)
     
@@ -151,13 +132,21 @@ class MPNSTDataset(Dataset):
         label = int(row['label'])
         _3d_images = self.load_images_3d(case_id, self.use_roi)
         _3d_images = torch.tensor(_3d_images).float()
-        sample = {"image": _3d_images.unsqueeze(0), "label": label, "case_id": case_id}
+        _3d_segs = self.load_segs_3d(case_id, self.use_roi)
+        _3d_segs = torch.tensor(_3d_segs).float()
+
+        sample = {"image": _3d_images.unsqueeze(0), "seg": _3d_segs.unsqueeze(0), "label": label, "case_id": case_id}
+        
+        # preprocessing
+        self.pre_transforam = self.preprocess_transform(case_id)
+        sample = self.pre_transforam(sample)
+
         # If use transformation
         if self.transform != None:
             sample = self.transform(sample) 
         
-        return sample    
-
+        return sample   
+       
     def prepare_roi(self):
         # use for the first time
         roi_coodinates = {}
@@ -171,22 +160,107 @@ class MPNSTDataset(Dataset):
         joblib.dump(roi_coodinates, f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/3d_roi_{self.mri_type}.pkl")
         return roi_coodinates
     
-    def __get_roi(self):
-        if (f"3d_roi_{self.mri_type}.pkl" in os.listdir(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/"))\
-            and (self.use_roi) :
+    def prepare_pixdim(self):
+        # use for the first time
+        id_pixdim = {}
+        pixdim_list = []
+        print("Read pixdim from every image...")
+        for row in tqdm(self.data, total=len(self.data)):
+            case_id = row['case_id']
+            img = f"/trinity/home/xwan/data/MPNST/{case_id}/{self.mri_type}.nii.gz"
+            pixdim = nib.load(img).header['pixdim'][1:4]
+            pixdim_list.append(pixdim)
+            id_pixdim[case_id] = pixdim
+        joblib.dump(id_pixdim, f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/pixdim_{self.mri_type}.pkl")
+        mean_pixdim = np.array(pixdim_list).mean(-2)
+        return mean_pixdim
+    
+    def get_roi(self):
+        if (f"3d_roi_{self.mri_type}.pkl" in os.listdir(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/")):
             print("Loading the ROI from segmentations for all the images...")
             roi_coodinates = joblib.load(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/3d_roi_{self.mri_type}.pkl")
             return roi_coodinates
         else:
-            print("Prepare dataset first to generate .pkl file.")
+            print("Prepare dataset first to generate .pkl file for roi_coordinates.")
+
+    def get_pixdim(self):
+        if (f"pixdim_{self.mri_type}.pkl" in os.listdir(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/")):
+            print("Loading the ROI from segmentations for all the images...")
+            pixdims = joblib.load(f"/trinity/home/xwan/MPNST_DL/input/{self.mri_type}/pixdim_{self.mri_type}.pkl")
+            return pixdims
+        else:
+            print("Prepare dataset first to generate .pkl file for pixdim.")
+    
+    def get_roi_center(self, case_id):
+        img_roi = self.get_roi()
+        print(f"test get roi_ {case_id}")
+        # print(img_roi)
+        x1, x2, y1, y2, z1, z2 = img_roi[case_id]
+        # test 
+        kx, ky, kz = 1, 1, 1
+        # ori_x, ori_y, ori_z = self.get_pixdim()[case_id]
+        # kx, ky, kz = self.pixdim[0]/ori_x, self.pixdim[1]/ori_y, self.pixdim[2]/ori_z
+        x, y, z = round((x2 - x1) * kx / 2 + x1 + 0.5), round((y2 - y1) * ky / 2 + y1 + 0.5), round((z2 - z1) * kz / 2 + z1 + 0.5)
+        return x, y, z
 
     def load_images_3d(self, case_id, use_roi):
         f_img = f"/trinity/home/xwan/data/MPNST/{case_id}/{self.mri_type}.nii.gz"
         img = nib.load(f_img).get_fdata()
         if use_roi == True:
-            img_roi = self.__get_roi()
+            img_roi = self.get_roi()
             x1, x2, y1, y2, z1, z2 = img_roi[case_id]
             return img[x1:x2, y1:y2:, z1:z2]
         else:
             return img
         
+    def load_segs_3d(self, case_id, use_roi):
+        f_seg = f"/trinity/home/xwan/data/MPNST/{case_id}/segmentations.nii.gz"
+        seg = nib.load(f_seg).get_fdata()
+        if use_roi == True:
+            img_roi = self.get_roi()
+            x1, x2, y1, y2, z1, z2 = img_roi[case_id]
+            return seg[x1:x2, y1:y2:, z1:z2]
+        else:
+            return seg
+
+    def preprocess_transform(self, case_id, keys=['image','seg']):
+        
+        x, y, z = self.get_roi_center(case_id)
+        if case_id != 'MPNSTRad-012_1':
+            axcodes = "PLI"
+        else:
+            axcodes = "LIP"
+            a = z
+            z = y
+            y = a
+        x1, x2, y1, y2, z1, z2 = self.get_roi()[case_id]
+        roi_spatial_size = (x2-x1+5, y2-y1+5, z2-z1+5)
+        preprocess = Compose([
+                # Orientationd(keys = keys, axcodes=axcodes),
+                # SpatialCropd(
+                #     keys = keys,
+                #     roi_center = (x, y ,z),
+                #     roi_size = roi_spatial_size),
+                # Spacingd(
+                #     keys = keys,
+                #     pixdim = self.pixdim,
+                #     mode = ("bilinear", "nearest")),
+                # ResizeWithPadOrCropd(
+                #     keys = keys,
+                #     spatial_size = self.spatial_size),
+                # SpatialPadd(
+                #     keys = keys,
+                #     spatial_size = self.spatial_size),
+                # NormalizeIntensityd(
+                #     keys = 'image', 
+                #     nonzero = False, 
+                #     channel_wise = True)
+                ]) 
+        return preprocess
+
+def extract_3d_bbx(f_seg):
+    seg = nib.load(f_seg).get_fdata()
+    x_min, x_max = int(np.where(seg==1)[0].min()), int(np.where(seg==1)[0].max())
+    y_min, y_max = int(np.where(seg==1)[1].min()), int(np.where(seg==1)[1].max())
+    z_min, z_max = int(np.where(seg==1)[2].min()), int(np.where(seg==1)[2].max())
+    return [x_min, x_max+1, y_min, y_max+1, z_min, z_max+1]
