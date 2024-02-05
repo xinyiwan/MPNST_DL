@@ -60,6 +60,7 @@ class MyModel(pl.LightningModule):
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
         print(y_hat)
+        print(y)
         y_true = y.cpu().detach().numpy()
         y_pred = y_hat.argmax(axis=1).cpu().detach().numpy()
         print("======  prediction =====")
