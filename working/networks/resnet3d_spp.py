@@ -47,7 +47,7 @@ class BasicBlock(nn.Module):
         out = self.bn1(out)
         out = self.relu(out)
 
-        out = self.conv2(x)
+        out = self.conv2(out)
         out = self.bn2(out)
 
         if self.downsample is not None:
@@ -125,7 +125,7 @@ class ResNet_spp(nn.Module):
         self.layer3 = self._make_layer(block, block_inplanes[2], layers[2], stride=2)
         self.layer4 = self._make_layer(block, block_inplanes[3], layers[3], stride=2)
         self.spp = SPP3DLayer(scales)
-        self.linear = nn.Linear(64*sum([x**3 for x in scales]), n_classes)
+        self.linear = nn.Linear(block_inplanes[3] * sum([x**3 for x in scales]), n_classes)
 
 
     def _make_layer(self, block, planes, blocks, stride=1):
