@@ -52,9 +52,9 @@ class SPP3DLayer(nn.Module):
             h_wid = int(math.ceil(in_h / scale_list[i]))
             w_wid = int(math.ceil(in_w / scale_list[i]))
             t_wid = int(math.ceil(in_t / scale_list[i]))
-            h_pad = (h_wid*scale_list[i] - in_h + 1)/2
-            w_pad = (w_wid*scale_list[i] - in_w + 1)/2
-            t_pad = (t_wid*scale_list[i] - in_t + 1)/2
+            h_pad = int((h_wid*scale_list[i] - in_h + 1)/2)
+            w_pad = int((w_wid*scale_list[i] - in_w + 1)/2)
+            t_pad = int((t_wid*scale_list[i] - in_t + 1)/2)
             maxpool = nn.MaxPool3d((h_wid, w_wid, t_wid), stride=(h_wid, w_wid, t_wid), padding=(h_pad, w_pad, t_pad))
             out = maxpool(x)
             if(i == 0):
