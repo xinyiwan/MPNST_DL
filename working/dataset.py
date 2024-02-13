@@ -65,23 +65,23 @@ class MPNSTDataMoule(pl.LightningDataModule):
         
 
     def augmentation_transform(self, keys=['image','seg']):
-            # train_trans = Compose([
-            #     RandGaussianNoised(keys = ['image'],
-            #                        prob=0.5, 
-            #                        mean=0.0, 
-            #                        std=0.05),
-            #     RandZoomd(keys = ['image'],
-            #               prob=0.3,
-            #               min_zoom=0.9, 
-            #               max_zoom=1.1),
-            #     RandRotated(prob=0.3,
-            #                 range_x = 0.4,
-            #                 range_y = 0.4,
-            #                 range_z = 0.4,
-            #                 keys = ['image']),
-            #     RandFlipd(keys = ['image'],
-            #               prob=0.5, spatial_axis=1),
-            # ]) 
+            train_trans = Compose([
+                RandGaussianNoised(keys = ['image'],
+                                   prob=0.5, 
+                                   mean=0.0, 
+                                   std=0.05),
+                RandZoomd(keys = ['image'],
+                          prob=0.3,
+                          min_zoom=0.9, 
+                          max_zoom=1.1),
+                RandRotated(prob=0.3,
+                            range_x = 0.4,
+                            range_y = 0.4,
+                            range_z = 0.4,
+                            keys = ['image']),
+                RandFlipd(keys = ['image'],
+                          prob=0.5, spatial_axis=1),
+            ]) 
             train_trans = None 
             val_trans = None
             return train_trans, val_trans
@@ -134,16 +134,18 @@ class MPNSTDataset(Dataset):
         _3d_images = torch.tensor(_3d_images).float()
         _3d_segs = self.load_segs_3d(case_id, self.use_roi)
         _3d_segs = torch.tensor(_3d_segs).float()
-
         sample = {"image": _3d_images.unsqueeze(0), "seg": _3d_segs.unsqueeze(0), "label": label, "case_id": case_id}
-        
+
         # preprocessing
         self.pre_transforam = self.preprocess_transform(case_id)
         sample = self.pre_transforam(sample)
 
-        # If use transformation
+        # If use augmentation transformation
         if self.transform != None:
             sample = self.transform(sample) 
+        
+        _3d_input = torch.cat((_3d_images.unsqueeze(0), _3d_segs.unsqueeze(0)),0)
+        sample = {"input": _3d_input, "label": label, "case_id": case_id}
         
         return sample   
        
@@ -225,36 +227,37 @@ class MPNSTDataset(Dataset):
 
     def preprocess_transform(self, case_id, keys=['image','seg']):
         
-        x, y, z = self.get_roi_center(case_id)
+        # x, y, z = self.get_roi_center(case_id)
+        # x1, x2, y1, y2, z1, z2 = self.get_roi()[case_id]
+        # roi_spatial_size = (x2-x1+5, y2-y1+5, z2-z1+5)
+
         if case_id != 'MPNSTRad-012_1':
             axcodes = "PLI"
         else:
             axcodes = "LIP"
-            a = z
-            z = y
-            y = a
-        x1, x2, y1, y2, z1, z2 = self.get_roi()[case_id]
-        roi_spatial_size = (x2-x1+5, y2-y1+5, z2-z1+5)
+            # a = z
+            # z = y
+            # y = a
         preprocess = Compose([
-                # Orientationd(keys = keys, axcodes=axcodes),
+                Orientationd(keys = keys, axcodes=axcodes),
                 # SpatialCropd(
                 #     keys = keys,
                 #     roi_center = (x, y ,z),
                 #     roi_size = roi_spatial_size),
-                # Spacingd(
-                #     keys = keys,
-                #     pixdim = self.pixdim,
-                #     mode = ("bilinear", "nearest")),
+                Spacingd(
+                    keys = keys,
+                    pixdim = self.pixdim,
+                    mode = ("bilinear", "nearest")),
                 # ResizeWithPadOrCropd(
                 #     keys = keys,
                 #     spatial_size = self.spatial_size),
                 # SpatialPadd(
                 #     keys = keys,
                 #     spatial_size = self.spatial_size),
-                # NormalizeIntensityd(
-                #     keys = 'image', 
-                #     nonzero = False, 
-                #     channel_wise = True)
+                NormalizeIntensityd(
+                    keys = 'image', 
+                    nonzero = False, 
+                    channel_wise = True)
                 ]) 
         return preprocess
 

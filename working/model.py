@@ -18,6 +18,7 @@ class MyModel(pl.LightningModule):
         self.lr = learning_rate
         self.decay_factor = decay_factor
         self.net = net
+        self.step = 0
 
     def forward(self, x):
         return self.net(x)
@@ -28,7 +29,7 @@ class MyModel(pl.LightningModule):
         return [optimizer], [scheduler]
     
     def training_step(self, batch, batch_idx):
-        x, y = batch['image'], batch['label']
+        x, y = batch['input'], batch['label']
         y_hat = self.forward(x)
         loss = F.cross_entropy(y_hat, y)
         self.log("train/batch/loss", loss, prog_bar=False)
@@ -56,7 +57,7 @@ class MyModel(pl.LightningModule):
         self.training_step_outputs.clear()  # free memory
 
     def validation_step(self, batch, batch_idx):
-        x, y = batch['image'], batch['label']
+        x, y = batch['input'], batch['label']
         y_hat = self(x)
         loss = F.cross_entropy(y_hat, y)
         print(y_hat)
@@ -68,10 +69,10 @@ class MyModel(pl.LightningModule):
         print("===== GT =====")
         print(y_true)
         self.validation_step_outputs.append({"loss": loss, "y_true": y_true, "y_pred": y_pred})
-
         return {"loss": loss, "y_true": y_true, "y_pred": y_pred}
     
     def on_validation_epoch_end(self):
+        print(f"Validation step {self.step + 1}")
         loss = np.array([])
         y_true = np.array([])
         y_pred = np.array([])
@@ -79,9 +80,15 @@ class MyModel(pl.LightningModule):
             loss = np.append(loss, results_dict["loss"].cpu().detach().numpy())
             y_true = np.append(y_true, results_dict["y_true"])
             y_pred = np.append(y_pred, results_dict["y_pred"])
+        print(y_true)
         acc = accuracy_score(y_true, y_pred)
-        auc = roc_auc_score(y_true, y_pred)
         self.log("val/loss", loss.mean())
         self.log("val/acc", acc)
-        self.log("val/auc", auc)
+        try:
+            auc = roc_auc_score(y_true, y_pred)
+            self.log("val/auc", auc)
+        except ValueError:
+            pass
         self.validation_step_outputs.clear()  # free memory
+        self.step += 1
+
