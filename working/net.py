@@ -1,5 +1,6 @@
 import monai
 from networks.classifiers import cnn3d
+from networks.resnet3d_spp import ResNet_spp, generate_model
 def init_net(cfg):
     if cfg['model']['net'] == 'resnet':
         net = monai.networks.nets.resnet.resnet18(
@@ -13,8 +14,8 @@ def init_net(cfg):
                                              growth_rate = cfg['model']['densenet']['growth_rate'],
                                              block_config = tuple(cfg['model']['densenet']['block_config']),
                                              dropout_prob = cfg['model']['densenet']['dropout_prob'])
-    if cfg['model']['net'] == 'classifier':
-        net = cnn3d()
+    if cfg['model']['net'] == 'resnet_spp':
+        net = generate_model(10, in_channel= cfg['model']['resnet_spp']['in_channels'])
     return net
 
 
