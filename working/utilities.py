@@ -13,7 +13,7 @@ def log_confusion_matrix(lit_model, data_module, neptune_logger, cp_dir):
     y_true = np.array([])
     y_pred = np.array([])
     for batch in val_data:
-        x, y = batch['image'], batch['label']
+        x, y = batch['input'], batch['label']
         y = y.cpu().detach().numpy()
         y_hat = lit_model.forward(x).argmax(axis=1).cpu().detach().numpy()
         y_true = np.append(y_true, y)
@@ -30,16 +30,21 @@ def plot_batch(dataloader, cp_dir, mode, neptune_logger, num=1):
     plt.rcParams['axes.titlesize'] = 8
     for i, batch in enumerate(dataloader):
         
-        columns = len(batch['image'])
+        columns = len(batch['input'])
         fig, axs = plt.subplots(2, columns, figsize=(columns*3, 6))
         for j in range(columns):
-            x, y, z = batch['image'][j][0,:,:,:].shape
-            img = batch['image'][j][0,:,:,int(z/2)]
-            seg = batch['seg'][j][0,:,:,int(z/2)]
+            x, y, z = batch['input'][j][0,:,:,:].shape
+            img = batch['input'][j][0,:,:,int(z/2)]
+            seg = batch['input'][j][1,:,:,int(z/2)]
 
-            axs[0][j].set_title(f"{batch['case_id'][j]} Label:{batch['label'][j].item()}")
-            axs[0][j].imshow(img, cmap='gray')
-            axs[1][j].imshow(seg, cmap='gray')
+            if columns == 1:
+                axs[0].set_title(f"{batch['case_id'][j]} Label:{batch['label'][j].item()}")
+                axs[0].imshow(img, cmap='gray')
+                axs[1].imshow(seg, cmap='gray')
+            else:
+                axs[0][j].set_title(f"{batch['case_id'][j]} Label:{batch['label'][j].item()}")
+                axs[0][j].imshow(img, cmap='gray')
+                axs[1][j].imshow(seg, cmap='gray')
         plt.axis('off')
         plt.show()
         plt.savefig(os.path.join(cp_dir,f'{mode}_batch_{i}.png'))
