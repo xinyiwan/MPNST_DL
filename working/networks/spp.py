@@ -33,8 +33,32 @@ class SPPLayer(nn.Module):
             else:
                 spp = torch.cat((spp, out.view(batch_size, -1)), 1)
         return spp
-        
+
+
 class SPP3DLayer(nn.Module):
+    def __init__(self, scale_list):
+        super(SPP3DLayer, self).__init__()
+        self.scale_list = scale_list
+
+    def forward(self, x):
+        '''
+        x: a tensor vector of previous convolution layer
+        scale_list: list contain multi-scale pooling size
+        
+        returns: a tensor vector with shape [1 x n] is the concentration of multi-level pooling
+        '''    
+        batch_size = x.shape[0]
+        scale_list = self.scale_list
+        for i in range(len(scale_list)):
+            maxpool = nn.AdaptiveAvgPool3d((scale_list[i], scale_list[i], scale_list[i]))
+            out = maxpool(x)
+            if(i == 0):
+                spp = out.view(batch_size, -1)
+            else:
+                spp = torch.cat((spp, out.view(batch_size, -1)), 1)
+        return spp
+    
+class SPP3DLayer_old(nn.Module):
     def __init__(self, scale_list):
         super(SPP3DLayer, self).__init__()
         self.scale_list = scale_list
