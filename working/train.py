@@ -83,8 +83,8 @@ def main():
     print("Validation: ", len(data.val_set))
 
     # Plots batches of train and validation sets
-    # plot_batch(data.train_dataloader(), cp_dir=cp_dir, mode='train', neptune_logger=neptune_logger, num=5)
-    # plot_batch(data.val_dataloader(), cp_dir=cp_dir, mode='val',neptune_logger=neptune_logger, num=1)        
+    plot_batch(data.train_dataloader(), cp_dir=cp_dir, mode='train', neptune_logger=neptune_logger, num=5)
+    plot_batch(data.val_dataloader(), cp_dir=cp_dir, mode='val',neptune_logger=neptune_logger, num=1)        
     
     # Initialize a trainer
 
@@ -102,7 +102,7 @@ def main():
     model = MyModel(
         net = net,
         learning_rate = parameters["learning_rate"],
-        decay_factor = parameters["decay_factor"]
+        decay_factor = parameters["decay_factor"],
     ).to(device)
 
     # (neptune) log model summary and hyper-parameters
