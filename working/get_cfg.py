@@ -21,4 +21,7 @@ def get_parameters(cfg):
     if cfg['model']['net'] == 'resnet':
         parameters['layers'] = cfg['model']['resnet']['layers']
 
+    if cfg['model']['net'] == 'resnet_spp':
+        parameters['init_features'] = cfg['model']['resnet_spp']['init_features']
+
     return parameters

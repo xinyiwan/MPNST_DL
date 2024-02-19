@@ -32,7 +32,7 @@ for case_id in roi_coodinates.keys():
     else:
         l, w, h = b-a, f-e, d-c
     bbxs.append(np.array([l,w,h]))
-    # print(f"bbx size = {l, w, h}")
+    print(f"bbx size = {l, w, h}")
     v = (b-a)*(d-c)*(f-e)
     if v > v_m:
         v_m = v      
@@ -42,6 +42,7 @@ bbxs = np.array(bbxs)
 # print(bbxs)
 print(f"medium values of bbxs: {np.median(bbxs,-2)}")
 print(f"max values of bbxs: {np.max(bbxs,-2)}")
+print(f"min values of bbxs: {np.min(bbxs,-2)}")
 print(f"mean values of bbxs: {np.mean(bbxs,-2)}")
 
 
