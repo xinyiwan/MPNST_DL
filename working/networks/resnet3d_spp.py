@@ -7,8 +7,9 @@ import sys
 sys.path.insert(1, '/trinity/home/xwan/MPNST_DL/working')
 from networks.spp import SPP3DLayer
 
-def get_inplanes():
-    return [64, 128, 256, 512]
+def get_inplanes(init = 64):
+    init = init
+    return [init, init * 2, init * 4, init * 8]
 
 
 def conv3x3x3(in_planes, out_planes, stride=1):
@@ -162,23 +163,23 @@ class ResNet_spp(nn.Module):
 
         return x
     
-def generate_model(model_depth, in_channel, **kwargs):
+def generate_model(model_depth, init, in_channel, **kwargs):
     assert model_depth in [10, 18, 34, 50, 101, 152, 200]
 
     if model_depth == 10:
-        model = ResNet_spp(BasicBlock, [1, 1, 1, 1], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(BasicBlock, [1, 1, 1, 1], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 18:
-        model = ResNet_spp(BasicBlock, [2, 2, 2, 2], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(BasicBlock, [2, 2, 2, 2], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 34:
-        model = ResNet_spp(BasicBlock, [3, 4, 6, 3], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(BasicBlock, [3, 4, 6, 3], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 50:
-        model = ResNet_spp(Bottleneck, [3, 4, 6, 3], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(Bottleneck, [3, 4, 6, 3], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 101:
-        model = ResNet_spp(Bottleneck, [3, 4, 23, 3], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(Bottleneck, [3, 4, 23, 3], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 152:
-        model = ResNet_spp(Bottleneck, [3, 8, 36, 3], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(Bottleneck, [3, 8, 36, 3], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
     elif model_depth == 200:
-        model = ResNet_spp(Bottleneck, [3, 24, 36, 3], get_inplanes(), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
+        model = ResNet_spp(Bottleneck, [3, 24, 36, 3], get_inplanes(init), scales=[5, 3, 1], n_input_channels=in_channel, **kwargs)
 
     return model
 

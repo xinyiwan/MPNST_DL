@@ -1,4 +1,4 @@
-import os
+import os, glob
 import monai
 import numpy as np
 import pandas as pd
@@ -51,8 +51,8 @@ def main():
         data.prepare_data()
         data.setup()
         cp_path = '/trinity/home/xwan/MPNST_DL/output/checkpoints/{}_{}_config-{}/fold_{}'.format(parameters['task'], args.date, int(parameters['idx']), i)
-        # cp = os.path.join(cp_path, os.listdir(cp_path)[0])
-        cp = os.path.join(cp_path, 'last.ckpt')
+        cp = glob.glob(os.path.join(cp_path, "epoch*.ckpt"))[0]
+        # cp = os.path.join(cp_path, 'last.ckpt')
         checkpoint = torch.load(cp)
         model.load_state_dict(checkpoint['state_dict'], strict=False)
 
@@ -62,7 +62,7 @@ def main():
         with torch.no_grad():
             for  step, batch in enumerate(val_loader):
                 model.eval()
-                images = batch["image"].to(device)
+                images = batch["input"].to(device)
                 outputs = model(images)
                 preds = np.append(preds, outputs.argmax(axis=1).detach().cpu().numpy())
                 labels = np.append(labels, batch["label"].cpu().detach().numpy())

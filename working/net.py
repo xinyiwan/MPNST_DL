@@ -15,7 +15,11 @@ def init_net(cfg):
                                              block_config = tuple(cfg['model']['densenet']['block_config']),
                                              dropout_prob = cfg['model']['densenet']['dropout_prob'])
     if cfg['model']['net'] == 'resnet_spp':
-        net = generate_model(10, in_channel= cfg['model']['resnet_spp']['in_channels'])
+        net = generate_model(10, 
+                             init= cfg['model']['resnet_spp']['init_features'],
+                             in_channel = cfg['model']['resnet_spp']['in_channels'])
+    if cfg['model']['net'] == 'classifier':
+        net = cnn3d()
     return net
 
 
