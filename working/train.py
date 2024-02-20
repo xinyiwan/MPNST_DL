@@ -95,6 +95,7 @@ def main():
         log_every_n_steps = 8,
         max_epochs = parameters["n_epochs"],
         enable_progress_bar = False,
+        accumulate_grad_batches = 2,
     )
 
     # Initialize model
